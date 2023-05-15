@@ -241,7 +241,7 @@ def encrypt(pt, rkb, rk):
             left, right = right, left
         # print("Round ", i + 1, " ", bin2hex(left),
         #       " ", bin2hex(right), " ", rk[i])
-           # print("Round ", i + 1, " ", rk[i])
+        print("Round ", i + 1, " ", rk[i])
     # Combination
     combine = left + right
 

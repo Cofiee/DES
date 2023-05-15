@@ -103,36 +103,42 @@ key_compression_table = [14, 17, 11, 24, 1, 5,
 
 
 def main():
-    e = "abcghijklmnoprstuwxyz123456789".encode()
+    e = "abcghijk".encode()
     m = hexlify(e).decode()
     message = translation.hex2bin(m)
-    key = translation.hex2bin("aabb09182736ccdd")
 
-    # print("1 - 16")
-    # for i in range(0, 16):
-    #     key = key_round(key, i)
-    #     print(key)
-    # print("16 - 1")
-    # for i in range(16, 0, -1):
-    #     key = key_round(key, i-1)
-    #     print(key)
-    cipher_text = encrypt(message, key)
-    decrypt(cipher_text, key)
+    key64 = translation.hex2bin("aabb09182736ccdd")
+    key56 = key_permutation(key64)
+
+    round_keys48 = []
+    for i in range(0, 16):
+        key56 = key_round(key56, i)
+        round_keys48.append(compression(key56))
+        print(translation.bin2hex(compression(key56)))
+
+    #cipher_text = encrypt(message, compressed_round_keys)
+    #print("Encrypted:", translation.bin2hex(cipher_text))
+
+    # decrypted = decrypt(cipher_text, round_keys)
+    # print("Decrypted:", translation.bin2hex(decrypted))
+    # if message == decrypted:
+    #     print("Dziala")
+    # else:
+    #     print("Nie dziala")
+    #decrypted = unhexlify(decrypted.encode())
+    #print("Decryptded:\n", decrypted.decode())
 
 
-def encrypt(message, key):
+def encrypt(message, round_keys):  # 48 bits keys
     print("Encryption:")
     cipher_text = message
     cipher_text = initial_permutation(cipher_text)
     print("Initial: {ciph}".format(ciph=translation.bin2hex(cipher_text)))
     for i in range(0, 16):
-        #key = key_round(key, i)
-        cipher_text = des_round(cipher_text, compression(key))
-        print("Round {i}: {ciph}".format(i=i+1, ciph=translation.bin2hex(cipher_text)))
+        cipher_text = des_round(cipher_text, )
 
     cipher_text = final_permutation(cipher_text)
     print("Final:    {ciph}".format(ciph=translation.bin2hex(cipher_text)))
-    print(translation.bin2hex(cipher_text))
     return cipher_text
 
 
@@ -141,17 +147,13 @@ def decrypt(message, key):
     cipher_text = message
     cipher_text = initial_permutation(cipher_text)
     print("Initial: {ciph}".format(ciph=translation.bin2hex(cipher_text)))
-    for i in range(16, 0, -1):
-        #key = key_round(key, i - 1)
-        cipher_text = des_round(cipher_text, compression(key))
-        print("Round {i}: {ciph}".format(i=i, ciph=translation.bin2hex(cipher_text)))
+    for i in range(15, -1, -1):
+        cipher_text = des_round(cipher_text, compression(keys[i]))
 
     cipher_text = final_permutation(cipher_text)
-    print("Final:    {ciph}".format(ciph=translation.bin2hex(cipher_text)))
-    hex_str = translation.bin2hex(cipher_text).encode()
-    print(hex_str.decode())
-    #print(unhexlify(hex_str).decode())
+    print("Final:   {ciph}".format(ciph=translation.bin2hex(cipher_text)))
     return cipher_text
+
 
 def initial_permutation(input_) -> str:
     result = ""
@@ -171,9 +173,9 @@ def des_round(block, key):
     l = block[0:32]
     r = block[32:64]
     l_prim = r
-    r = expansion(r)
+    r = expansion(r)  # expansion to 48
     r = xor(r, key)
-    r = sbox_permutation(r)
+    r = sbox_permutation(r)  # sboxes compress to 32 bits
     r = p_box_permutation(r)
     r_prim = xor(l, r)
     cipher_text = l_prim + r_prim
@@ -216,13 +218,13 @@ def xor(a, b) -> str:
 def key_permutation(key_hex) -> str:
     result = ""
     for i in range(0, 56):
-        result = result + key_hex[key_parity_table[i]]
+        result = result + key_hex[key_parity_table[i] - 1]
     return result
 
 
 def key_round(key, i) -> str:
-    l = key[0:32]
-    r = key[32:64]
+    l = key[0:28]
+    r = key[28:56]
     for j in range(0, shift_table[i]):
         l = rotation(l)
         r = rotation(r)
@@ -238,7 +240,7 @@ def rotation(half_key) -> str:
 def compression(key) -> str:
     result = ""
     for i in range(0, 48):
-        result = result + key[key_compression_table[i]]
+        result = result + key[key_compression_table[i] - 1]
     return result
 
 
