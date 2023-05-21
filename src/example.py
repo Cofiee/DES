@@ -216,10 +216,8 @@ def encrypt(pt, rkb, rk):
     for i in range(0, 16):
         #  Expansion D-box: Expanding the 32 bits data into 48 bits
         right_expanded = permute(right, exp_d, 48)
-
         # XOR RoundKey[i] and right_expanded
         xor_x = xor(right_expanded, rkb[i])
-
         # S-boxex: substituting the value from s-box table by calculating row and column
         sbox_str = ""
         for j in range(0, 8):
@@ -228,9 +226,9 @@ def encrypt(pt, rkb, rk):
                 int(xor_x[j * 6 + 1] + xor_x[j * 6 + 2] + xor_x[j * 6 + 3] + xor_x[j * 6 + 4]))
             val = sbox[j][row][col]
             sbox_str = sbox_str + dec2bin(val)
-
         # Straight D-box: After substituting rearranging the bits
         sbox_str = permute(sbox_str, per, 32)
+        print(bin2hex(sbox_str))
 
         # XOR left and sbox_str
         result = xor(left, sbox_str)
@@ -239,9 +237,8 @@ def encrypt(pt, rkb, rk):
         # Swapper
         if (i != 15):
             left, right = right, left
-        # print("Round ", i + 1, " ", bin2hex(left),
-        #       " ", bin2hex(right), " ", rk[i])
-        print("Round ", i + 1, " ", rk[i])
+        #print("Round ", i + 1, " ", bin2hex(left), " ", bin2hex(right), " ", rk[i])
+        #print("Round ", i + 1, " ", rk[i])
     # Combination
     combine = left + right
 

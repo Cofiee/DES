@@ -79,7 +79,7 @@ shift_table = [1, 1, 2, 2,
                1, 2, 2, 2,
                2, 2, 2, 1]
 
-p_box = [16, 7, 10, 21, 29, 12, 28, 17, 1, 15, 23, 26, 5, 18, 31, 10,
+p_box = [16, 7, 20, 21, 29, 12, 28, 17, 1, 15, 23, 26, 5, 18, 31, 10,
          2, 8, 24, 14, 32, 27, 3, 9, 19, 13, 30, 6, 22, 11, 4, 25]
 
 key_parity_table = [57, 49, 41, 33, 25, 17, 9,
@@ -103,8 +103,10 @@ key_compression_table = [14, 17, 11, 24, 1, 5,
 
 
 def main():
-    e = "abcghijk".encode()
-    m = hexlify(e).decode()
+    #e = "abcghijk".encode()
+    #e = "123456abcd132536".encode()
+    #m = hexlify(e).decode()
+    m = "123456abcd132536"
     message = translation.hex2bin(m)
 
     key64 = translation.hex2bin("aabb09182736ccdd")
@@ -114,13 +116,19 @@ def main():
     for i in range(0, 16):
         key56 = key_round(key56, i)
         round_keys48.append(compression(key56))
-        print(translation.bin2hex(compression(key56)))
 
-    #cipher_text = encrypt(message, compressed_round_keys)
-    #print("Encrypted:", translation.bin2hex(cipher_text))
+    # for i in range(0, 16):
+    #     message = des_round(message, round_keys48[i])
+    # print("")
+    # rev_message = message
+    # for i in range(15, -1, -1):
+    #     rev_message = des_round(rev_message, round_keys48[i])
 
-    # decrypted = decrypt(cipher_text, round_keys)
-    # print("Decrypted:", translation.bin2hex(decrypted))
+    cipher_text = encrypt(message, round_keys48)
+    print("Encrypted:", translation.bin2hex(cipher_text))
+
+    #decrypted = decrypt(cipher_text, round_keys48)
+   # print("Decrypted:", translation.bin2hex(decrypted))
     # if message == decrypted:
     #     print("Dziala")
     # else:
@@ -129,29 +137,28 @@ def main():
     #print("Decryptded:\n", decrypted.decode())
 
 
-def encrypt(message, round_keys):  # 48 bits keys
+def encrypt(message, round_keys48):  # 48 bits keys
     print("Encryption:")
     cipher_text = message
     cipher_text = initial_permutation(cipher_text)
     print("Initial: {ciph}".format(ciph=translation.bin2hex(cipher_text)))
     for i in range(0, 16):
-        cipher_text = des_round(cipher_text, )
+        cipher_text = des_round(cipher_text, round_keys48[i], i)
 
     cipher_text = final_permutation(cipher_text)
-    print("Final:    {ciph}".format(ciph=translation.bin2hex(cipher_text)))
     return cipher_text
 
 
-def decrypt(message, key):
+def decrypt(message, round_keys48):
     print("Decryption:")
     cipher_text = message
     cipher_text = initial_permutation(cipher_text)
     print("Initial: {ciph}".format(ciph=translation.bin2hex(cipher_text)))
     for i in range(15, -1, -1):
-        cipher_text = des_round(cipher_text, compression(keys[i]))
+        cipher_text = des_round(cipher_text, round_keys48[i])
 
     cipher_text = final_permutation(cipher_text)
-    print("Final:   {ciph}".format(ciph=translation.bin2hex(cipher_text)))
+    #print("Final:   {ciph}".format(ciph=translation.bin2hex(cipher_text)))
     return cipher_text
 
 
@@ -169,7 +176,7 @@ def final_permutation(input_) -> str:
     return result
 
 
-def des_round(block, key):
+def des_round(block, key, i):
     l = block[0:32]
     r = block[32:64]
     l_prim = r
@@ -178,7 +185,10 @@ def des_round(block, key):
     r = sbox_permutation(r)  # sboxes compress to 32 bits
     r = p_box_permutation(r)
     r_prim = xor(l, r)
-    cipher_text = l_prim + r_prim
+    if i != 15:
+        cipher_text = l_prim + r_prim
+    else:
+        cipher_text = r_prim + l_prim
     return cipher_text
 
 
@@ -192,9 +202,11 @@ def expansion(input_) -> str:
 def sbox_permutation(input_):
     result = ""
     for i in range(0, 8):
-        s_row = int(input_[0] + input_[5], 2)
-        s_column = int(input_[1:5], 2)
-        result = result + translation.dec2bin(sbox[i][s_row][s_column])
+        s_row = translation.bin2dec(int(input_[i * 6] + input_[i * 6 + 5]))
+        s_col = translation.bin2dec(int(input_[i * 6 + 1] + input_[i * 6 + 2] + input_[i * 6 + 3] + input_[i * 6 + 4]))
+        # s_row = int(input_[0] + input_[5], 2)
+        # s_col = int(input_[1:5], 2)
+        result = result + translation.dec2bin(sbox[i][s_row][s_col])
     return result
 
 
