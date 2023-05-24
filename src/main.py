@@ -1,4 +1,5 @@
 from binascii import hexlify, unhexlify
+import PySimpleGUI as sg
 import translation
 
 initial_permutation_table = [58, 50, 42, 34, 26, 18, 10, 2,
@@ -103,62 +104,62 @@ key_compression_table = [14, 17, 11, 24, 1, 5,
 
 
 def main():
-    #e = "abcghijk".encode()
-    #e = "123456abcd132536".encode()
-    #m = hexlify(e).decode()
-    m = "123456abcd132536"
-    message = translation.hex2bin(m)
+    layout = [[sg.Text('Podaj tekst'), sg.Multiline(size=(30,5), key='message')],
+              [sg.Text('Podaj klucz'), sg.InputText(key='key64')],
+              [sg.Button('Szyfruj'), sg.Button('Odszyfruj')],
+              [sg.Multiline(size=(30,5), key='output', disabled=True)]]
 
-    key64 = translation.hex2bin("aabb09182736ccdd")
+    window = sg.Window('Des Rafał Topolski', layout)
+
+    while True:
+        event, values = window.read()
+        if event == sg.WIN_CLOSED:
+            break
+
+        elif event == 'Szyfruj':
+            key64_bin = translation.hex2bin(values['key64'].lower())
+            round_keys48 = prepare_keys(key64_bin)
+            cipher_text = des(values['message'].lower(), round_keys48)
+            window['output'].update(value=cipher_text)
+
+        elif event == 'Odszyfruj':
+            key64_bin = translation.hex2bin(values['key64'].lower())
+            round_keys48 = prepare_keys(key64_bin)
+            rev_round_keys48 = round_keys48[::-1]
+            plain_text = des(values['message'].lower(), rev_round_keys48)
+            window['output'].update(value=plain_text)
+
+
+def des(message, round_keys48) -> str:
+    if diff := len(message) % 16:
+        message += '20' * ((16 - diff) // 2)
+
+    cipher_text = ''
+    blocks_num = len(message) // 16
+    for i in range(0, blocks_num):
+        block = message[i*16:i*16+16]
+        tmp = des_block(translation.hex2bin(block), round_keys48)
+        cipher_text += translation.bin2hex(tmp)
+    return cipher_text
+
+
+def prepare_keys(key64) -> list[str]:
     key56 = key_permutation(key64)
 
     round_keys48 = []
     for i in range(0, 16):
         key56 = key_round(key56, i)
         round_keys48.append(compression(key56))
-
-    # for i in range(0, 16):
-    #     message = des_round(message, round_keys48[i])
-    # print("")
-    # rev_message = message
-    # for i in range(15, -1, -1):
-    #     rev_message = des_round(rev_message, round_keys48[i])
-
-    cipher_text = encrypt(message, round_keys48)
-    print("Encrypted:", translation.bin2hex(cipher_text))
-
-    #decrypted = decrypt(cipher_text, round_keys48)
-   # print("Decrypted:", translation.bin2hex(decrypted))
-    # if message == decrypted:
-    #     print("Dziala")
-    # else:
-    #     print("Nie dziala")
-    #decrypted = unhexlify(decrypted.encode())
-    #print("Decryptded:\n", decrypted.decode())
+    return round_keys48
 
 
-def encrypt(message, round_keys48):  # 48 bits keys
-    print("Encryption:")
-    cipher_text = message
+def des_block(message_bin, round_keys48):  # 48 bits keys
+    cipher_text = message_bin
     cipher_text = initial_permutation(cipher_text)
-    print("Initial: {ciph}".format(ciph=translation.bin2hex(cipher_text)))
     for i in range(0, 16):
         cipher_text = des_round(cipher_text, round_keys48[i], i)
 
     cipher_text = final_permutation(cipher_text)
-    return cipher_text
-
-
-def decrypt(message, round_keys48):
-    print("Decryption:")
-    cipher_text = message
-    cipher_text = initial_permutation(cipher_text)
-    print("Initial: {ciph}".format(ciph=translation.bin2hex(cipher_text)))
-    for i in range(15, -1, -1):
-        cipher_text = des_round(cipher_text, round_keys48[i])
-
-    cipher_text = final_permutation(cipher_text)
-    #print("Final:   {ciph}".format(ciph=translation.bin2hex(cipher_text)))
     return cipher_text
 
 
@@ -204,8 +205,6 @@ def sbox_permutation(input_):
     for i in range(0, 8):
         s_row = translation.bin2dec(int(input_[i * 6] + input_[i * 6 + 5]))
         s_col = translation.bin2dec(int(input_[i * 6 + 1] + input_[i * 6 + 2] + input_[i * 6 + 3] + input_[i * 6 + 4]))
-        # s_row = int(input_[0] + input_[5], 2)
-        # s_col = int(input_[1:5], 2)
         result = result + translation.dec2bin(sbox[i][s_row][s_col])
     return result
 
